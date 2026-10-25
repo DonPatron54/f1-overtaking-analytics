@@ -1,0 +1,40 @@
+# Dev environment: Python workspace + PostgreSQL 16.
+# The workspace shares the network namespace of the database container,
+# so PostgreSQL is reachable at localhost:5432 from notebooks and scripts.
+# POSTGRES_PASSWORD comes from .devcontainer/.env, which is generated on
+# first start by init-env.sh and never committed.
+
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/python:3.11
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    network_mode: service:db
+    environment:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: f1
+      PGDATABASE: f1
+      PGPASSWORD: ${POSTGRES_PASSWORD:?run .devcontainer/init-env.sh first}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: f1
+      POSTGRES_DB: f1
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run .devcontainer/init-env.sh first}
+    volumes:
+      - f1data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U f1 -d f1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  f1data:

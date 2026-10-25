@@ -1,0 +1,40 @@
+# Top-level dependencies. requirements.txt is the pinned lock file generated from
+# this file with: uv pip compile requirements.in --python-version 3.11 -o requirements.txt
+
+# Data collection
+fastf1
+requests
+beautifulsoup4
+lxml
+
+# Wrangling
+pandas
+numpy
+pyarrow
+rapidfuzz
+
+# Database
+sqlalchemy
+psycopg[binary]
+python-dotenv
+
+# Statistics & modelling
+scipy
+statsmodels
+scikit-learn
+xgboost-cpu
+shap
+
+# Visualisation
+matplotlib
+seaborn
+plotly
+
+# Geodata
+geopandas
+shapely
+folium
+
+# Notebooks
+jupyter
+ipykernel
