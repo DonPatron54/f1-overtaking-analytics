@@ -13,9 +13,12 @@ file so that restarts do not reset the count) and never bypasses them.
 Access: since October 2026 the official live-timing server requires an
 F1 TV account (Access plan or higher). Without an account FastF1 uses its
 public mirror, which only holds some seasons (2021 and 2022 at the time of
-writing). With an account, set F1_USERNAME and F1_PASSWORD as environment
-variables (e.g. as Codespaces secrets) or pass --login to sign in
-interactively; credentials are handled by FastF1 only.
+writing). The official server also blocks cloud networks: from GitHub
+Actions and Codespaces it answers HTTP 403 even with a valid account, so a
+collection with account must run on a regular (home/university) network.
+Pass --login to sign in interactively, or set F1_USERNAME and F1_PASSWORD;
+credentials are handled by FastF1 only. --check prints the HTTP status per
+season without collecting anything.
 
 Command line:
     python -m src.collect_fastf1 2021 2022
