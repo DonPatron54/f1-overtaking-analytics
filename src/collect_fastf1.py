@@ -288,19 +288,30 @@ def check_access(seasons, login: bool = False) -> pd.DataFrame:
     Returns:
         One row per season and host with the HTTP status code.
     """
+    import requests
+
     setup_fastf1(login=login)
     session_http = fastf1.req.Cache._requests_session  # uncached, token adapter mounted
+    official = "https://livetiming.formula1.com"
     rows = []
     for season in seasons:
         path = fastf1.get_session(season, 1, "R").api_path
-        for host in ("https://livetiming.formula1.com", ff1_api.base_url_mirror):
+        checks = [("official, with account", session_http, official),
+                  ("official, anonymous", requests, official),
+                  ("mirror, anonymous", requests, ff1_api.base_url_mirror)]
+        for label, client, host in checks:
             url = f"{host}{path}SessionInfo.jsonStream"
             try:
-                status = session_http.get(url, timeout=30).status_code
+                resp = client.get(url, timeout=30)
+                status = resp.status_code
+                # first characters of an error body help to tell a missing
+                # entitlement from a blocked network (no secrets in there)
+                detail = "" if status == 200 else " ".join(resp.text[:160].split())
             except Exception as exc:  # noqa: BLE001
-                status = type(exc).__name__
-            rows.append({"season": season, "host": host, "status": status})
-            print(f"{season} {host:<38} {status}", flush=True)
+                status, detail = type(exc).__name__, ""
+            rows.append({"season": season, "check": label, "status": status,
+                         "detail": detail})
+            print(f"{season} {label:<24} {status} {detail}", flush=True)
     return pd.DataFrame(rows)
 
 
