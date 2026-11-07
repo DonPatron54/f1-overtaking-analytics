@@ -1,0 +1,45 @@
+season,round,n_laps,n_results,n_weather,n_track_status,total_laps,session_start_utc,status,event_name,event_format,error
+2021,1,1027.0,20.0,133.0,13.0,56.0,2021-03-28 15:00:00,loaded,Bahrain Grand Prix,conventional,
+2021,2,1127.0,20.0,161.0,22.0,63.0,2021-04-18 13:00:00,loaded,Emilia Romagna Grand Prix,conventional,
+2021,3,1245.0,20.0,134.0,3.0,66.0,2021-05-02 14:00:00,loaded,Portuguese Grand Prix,conventional,
+2021,4,1247.0,20.0,130.0,4.0,66.0,2021-05-09 13:00:00,loaded,Spanish Grand Prix,conventional,
+2021,5,1419.0,20.0,135.0,1.0,78.0,2021-05-23 13:00:00,loaded,Monaco Grand Prix,conventional,
+2021,6,943.0,20.0,172.0,30.0,51.0,2021-06-06 12:00:00,loaded,Azerbaijan Grand Prix,conventional,
+2021,7,1051.0,20.0,125.0,1.0,53.0,2021-06-20 13:00:00,loaded,French Grand Prix,conventional,
+2021,8,1296.0,20.0,118.0,3.0,71.0,2021-06-27 13:00:00,loaded,Styrian Grand Prix,conventional,
+2021,9,1338.0,20.0,156.0,5.0,71.0,2021-07-04 13:00:00,loaded,Austrian Grand Prix,conventional,
+2021,10,970.0,20.0,184.0,13.0,52.0,2021-07-18 14:00:00,loaded,British Grand Prix,sprint,
+2021,11,985.0,20.0,191.0,8.0,70.0,2021-08-01 13:00:00,loaded,Hungarian Grand Prix,conventional,
+2021,12,60.0,20.0,290.0,6.0,39.0,2021-08-29 13:00:00,loaded,Belgian Grand Prix,conventional,
+2021,13,1361.0,20.0,158.0,3.0,72.0,2021-09-05 13:00:00,loaded,Dutch Grand Prix,conventional,
+2021,14,891.0,20.0,149.0,18.0,53.0,2021-09-12 13:00:00,loaded,Italian Grand Prix,sprint,
+2021,15,1025.0,20.0,158.0,17.0,53.0,2021-09-26 12:00:00,loaded,Russian Grand Prix,conventional,
+2021,16,1147.0,20.0,157.0,16.0,58.0,2021-10-10 12:00:00,loaded,Turkish Grand Prix,conventional,
+2021,17,1044.0,20.0,161.0,8.0,56.0,2021-10-24 19:00:00,loaded,United States Grand Prix,conventional,
+2021,18,1261.0,20.0,164.0,5.0,71.0,2021-11-07 19:00:00,loaded,Mexico City Grand Prix,conventional,
+2021,19,1360.0,20.0,158.0,9.0,71.0,2021-11-14 17:00:00,loaded,São Paulo Grand Prix,sprint,
+2021,20,1114.0,20.0,152.0,27.0,57.0,2021-11-21 14:00:00,loaded,Qatar Grand Prix,conventional,
+2021,21,845.0,20.0,193.0,25.0,50.0,2021-12-05 17:30:00,loaded,Saudi Arabian Grand Prix,conventional,
+2021,22,1000.0,20.0,157.0,9.0,58.0,2021-12-12 13:00:00,loaded,Abu Dhabi Grand Prix,conventional,
+2022,1,1125.0,20.0,163.0,7.0,57.0,2022-03-20 15:00:00,loaded,Bahrain Grand Prix,conventional,
+2022,2,820.0,20.0,152.0,18.0,50.0,2022-03-27 17:00:00,loaded,Saudi Arabian Grand Prix,conventional,
+2022,3,1045.0,20.0,156.0,17.0,58.0,2022-04-10 05:00:00,loaded,Australian Grand Prix,conventional,
+2022,4,1132.0,20.0,158.0,8.0,63.0,2022-04-24 13:00:00,loaded,Emilia Romagna Grand Prix,sprint,
+2022,5,1057.0,20.0,162.0,13.0,57.0,2022-05-08 19:30:00,loaded,Miami Grand Prix,conventional,
+2022,6,1230.0,20.0,164.0,8.0,66.0,2022-05-22 13:00:00,loaded,Spanish Grand Prix,conventional,
+2022,7,,,,,,,failed,Monaco Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,8,,,,,,,failed,Azerbaijan Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,9,,,,,,,failed,Canadian Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,10,,,,,,,failed,British Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,11,,,,,,,failed,Austrian Grand Prix,sprint,RateLimitExceededError: any API: 500 calls/h
+2022,12,,,,,,,failed,French Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,13,,,,,,,failed,Hungarian Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,14,,,,,,,failed,Belgian Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,15,,,,,,,failed,Dutch Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,16,,,,,,,failed,Italian Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,17,,,,,,,failed,Singapore Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,18,,,,,,,failed,Japanese Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,19,,,,,,,failed,United States Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,20,,,,,,,failed,Mexico City Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
+2022,21,,,,,,,failed,São Paulo Grand Prix,sprint,RateLimitExceededError: any API: 500 calls/h
+2022,22,,,,,,,failed,Abu Dhabi Grand Prix,conventional,RateLimitExceededError: any API: 500 calls/h
