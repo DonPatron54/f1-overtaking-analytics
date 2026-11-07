@@ -370,6 +370,8 @@ def integrate(seasons, jolpica: dict[str, pd.DataFrame],
         "laps": laps,
         "weather": weather,
     }
+    # matching details (not a database table, used for documentation)
+    tables["circuit_matching"] = circuits.drop(columns=["lat", "lon"], errors="ignore")
     INTERIM_DIR.mkdir(parents=True, exist_ok=True)
     for name, df in tables.items():
         df.to_parquet(INTERIM_DIR / f"{name}.parquet", index=False)

@@ -58,19 +58,22 @@ def setup_fastf1(log_level: str = "WARNING") -> None:
             logging.ERROR)
 
 
-def load_schedule(season: int) -> pd.DataFrame:
+def load_schedule(season: int, refresh: bool = False) -> pd.DataFrame:
     """Event schedule of a season without testing, stored as raw Parquet.
 
     Args:
         season: Championship year.
+        refresh: Download again even if a stored schedule exists.
 
     Returns:
         FastF1 event schedule as plain DataFrame.
     """
+    path = RAW_FASTF1 / str(season) / "schedule.parquet"
+    if path.exists() and not refresh:
+        return pd.read_parquet(path)
     schedule = pd.DataFrame(fastf1.get_event_schedule(season, include_testing=False))
-    out = RAW_FASTF1 / str(season)
-    out.mkdir(parents=True, exist_ok=True)
-    schedule.to_parquet(out / "schedule.parquet", index=False)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    schedule.to_parquet(path, index=False)
     return schedule
 
 
@@ -144,7 +147,7 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
     setup_fastf1()
     records = []
     for season in seasons:
-        schedule = load_schedule(season)
+        schedule = load_schedule(season, refresh)
         for _, ev in schedule.iterrows():
             rnd = int(ev["RoundNumber"])
             if pd.Timestamp(ev["EventDate"]) > pd.Timestamp.now():

@@ -49,8 +49,12 @@ ERAS = {
     "E3": range(2026, 2027),  # active aero, override mode
 }
 
-# Consistent era colours for all figures
-ERA_COLORS = {"E1": "#1f77b4", "E2": "#d62728", "E3": "#2ca02c"}
+# Consistent era colours for all figures (colour-blind safe set, validated
+# for deutan/protan/tritan separation; always add direct labels or a legend)
+ERA_COLORS = {"E1": "#2a78d6", "E2": "#eb6834", "E3": "#1baf7a"}
+ERA_LABELS = {"E1": "E1 2018–2021 (classic aero)",
+              "E2": "E2 2022–2025 (ground effect)",
+              "E3": "E3 2026 (active aero)"}
 
 
 def era_for_season(season: int) -> str:

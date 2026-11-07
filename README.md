@@ -28,7 +28,7 @@ Target: `overtake` (1 if the car behind is ahead at the end of the lap).
 | [Jolpica-F1](https://github.com/jolpica/jolpica-f1) | results, grid, drivers, circuits | REST API |
 | Wikipedia | circuit characteristics | web scraping |
 | [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits) | circuit layouts (GeoJSON) | file download |
-| [OpenF1](https://openf1.org/) *(optional)* | high-resolution positions, from 2023 | REST API |
+| [OpenF1](https://openf1.org/) *(optional, under review)* | high-resolution positions, from 2023 | REST API |
 
 ## Quick start (GitHub Codespaces)
 
@@ -57,18 +57,45 @@ pd.read_sql("SELECT * FROM races LIMIT 5", engine)
 
 For ad-hoc SQL, run `psql` in the Codespace terminal (no arguments needed).
 
+## Pipeline
+
+Run the notebooks in this order (each runs top to bottom with *Restart & Run All*):
+
+| Notebook | Step | Output |
+| --- | --- | --- |
+| `00_setup_check` | environment, database connection | – |
+| `01_data_collection` | FastF1, Jolpica-F1, Wikipedia, GeoJSON | `data/raw/`, `reports/logs/collection_fastf1.csv` |
+| `02_integration` | keys, joins, integration log | `data/interim/`, `reports/logs/integration_log.csv` |
+| `03_database_postgres` | load PostgreSQL, SQL queries | database tables |
+| `04_pairs_and_target` | pair-laps, target `overtake`, exclusions | table `pairs`, `data/processed/pairs.parquet` |
+
+Raw data is committed in `data/raw/`, so the notebooks run without calling the
+APIs again. A fresh collection is slow on purpose: FastF1 limits itself to
+500 API calls per hour, and the collector waits whenever the limit is reached.
+
+```bash
+python -m src.collect_jolpica 2021 2022
+python -m src.collect_fastf1 2021 2022
+python -m src.scrape_wikipedia
+python -m src.collect_geo
+python -m pytest            # unit tests of the pair construction
+```
+
 ## Repository structure
 
 ```text
 ├── .devcontainer/      # Codespace: Python 3.11 + PostgreSQL 16 (Docker Compose)
 ├── data/
-│   ├── raw/            # unmodified API / scraping responses (not committed)
-│   ├── interim/        # cleaned intermediate files (not committed)
-│   └── processed/      # final analysis datasets
+│   ├── raw/            # unmodified API / scraping responses
+│   ├── interim/        # parsed and integrated tables (Parquet)
+│   └── processed/      # analysis datasets (pairs.parquet)
 ├── notebooks/          # numbered in pipeline order (00_, 01_, ...)
-├── reports/figures/    # figures for the slides
+├── reports/
+│   ├── figures/        # figures for the slides (PNG, 300 dpi)
+│   └── logs/           # collection, integration and exclusion logs
 ├── sql/schema.sql      # database schema
-├── src/                # reusable code (config, db, collectors, features)
+├── src/                # collectors, integration, pair construction, database
+├── tests/              # unit tests
 └── requirements.txt    # pinned dependencies (generated from requirements.in)
 ```
 
