@@ -245,7 +245,15 @@ def collect(seasons, refresh: bool = False, login: bool = False) -> pd.DataFrame
             print(f"{season} R{rnd:02d} {ev['EventName']:<28} {rec['status']}", flush=True)
     log = pd.DataFrame(records)
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    log.to_csv(LOGS_DIR / "collection_fastf1.csv", index=False)
+    log_file = LOGS_DIR / "collection_fastf1.csv"
+    if log_file.exists():
+        # keep the entries of seasons that were not part of this run
+        old = pd.read_csv(log_file)
+        old = old.loc[~old["season"].isin(log["season"].unique())]
+        full = pd.concat([old, log], ignore_index=True)
+    else:
+        full = log
+    full.sort_values(["season", "round"]).to_csv(log_file, index=False)
     return log
 
 
