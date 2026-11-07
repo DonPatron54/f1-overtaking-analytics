@@ -65,8 +65,10 @@ def wait_for_db(engine: Engine, timeout_s: int = 60) -> None:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             return
-        except OperationalError:
-            if time.monotonic() > deadline:
+        except OperationalError as exc:
+            # Only wait while the server is starting; fail fast on wrong credentials
+            starting = any(m in str(exc) for m in ("Connection refused", "starting up"))
+            if not starting or time.monotonic() > deadline:
                 raise
             time.sleep(2)
 

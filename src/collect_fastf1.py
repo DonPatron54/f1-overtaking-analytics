@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -34,10 +35,21 @@ def _paths(season: int, rnd: int) -> dict[str, Path]:
 
 
 def setup_fastf1(log_level: str = "WARNING") -> None:
-    """Enable the FastF1 HTTP cache and reduce its log output."""
+    """Enable the FastF1 HTTP cache and reduce its log output.
+
+    Since FastF1 3.9, requests to the live-timing API try to sign in to a
+    Formula 1 account. Historical race data is still served without one, so
+    the sign-in is skipped: without F1_USERNAME/F1_PASSWORD, stdin is detached
+    so FastF1 never waits for an interactive credential prompt.
+    """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    fastf1.Cache.enable_cache(str(CACHE_DIR))
+    fastf1.Cache.configure(cache_dir=str(CACHE_DIR))
     fastf1.set_log_level(log_level)
+    if not os.environ.get("F1_USERNAME"):
+        sys.stdin = open(os.devnull, encoding="utf-8")  # noqa: SIM115
+        # one warning per request would flood the output
+        logging.getLogger("fastf1.fastf1.internals.f1account.transport").setLevel(
+            logging.ERROR)
 
 
 def load_schedule(season: int) -> pd.DataFrame:
