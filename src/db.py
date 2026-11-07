@@ -7,6 +7,7 @@ container. Outside of it, put them into a `.env` file in the repository root
 
 Command line:
     python -m src.db init    # create all tables (idempotent)
+    python -m src.db reset   # drop all project tables and recreate them (deletes data!)
     python -m src.db check   # print server version and table row counts
 """
 
@@ -95,6 +96,51 @@ def init_schema(engine: Engine) -> list[str]:
     return sorted(inspect(engine).get_table_names())
 
 
+# Tables in foreign-key order (parents first)
+TABLE_ORDER = ["circuits", "races", "drivers", "driver_map", "results",
+               "laps", "weather", "pairs"]
+
+
+def reset_schema(engine: Engine) -> list[str]:
+    """Drop all project tables and recreate them from sql/schema.sql.
+
+    Needed when the schema changes, because CREATE TABLE IF NOT EXISTS does
+    not alter existing tables. All data in these tables is deleted.
+
+    Args:
+        engine: Target database.
+
+    Returns:
+        Sorted list of table names after setup.
+    """
+    with engine.begin() as conn:
+        for table in reversed(TABLE_ORDER):
+            conn.exec_driver_sql(f'DROP TABLE IF EXISTS "{table}" CASCADE')
+    return init_schema(engine)
+
+
+def load_tables(engine: Engine, tables: dict, replace: bool = True) -> dict[str, int]:
+    """Insert DataFrames into the project tables in foreign-key order.
+
+    Args:
+        engine: Target database.
+        tables: Mapping table name -> DataFrame with matching column names.
+        replace: Empty the given tables first (TRUNCATE ... CASCADE).
+
+    Returns:
+        Mapping table name -> inserted rows.
+    """
+    names = [t for t in TABLE_ORDER if t in tables]
+    with engine.begin() as conn:
+        if replace:
+            conn.exec_driver_sql(
+                "TRUNCATE " + ", ".join(f'"{t}"' for t in names) + " RESTART IDENTITY CASCADE")
+        for t in names:
+            tables[t].to_sql(t, conn, if_exists="append", index=False,
+                             method="multi", chunksize=5000)
+    return {t: len(tables[t]) for t in names}
+
+
 def table_counts(engine: Engine) -> dict[str, int]:
     """Count rows per table in the public schema.
 
@@ -119,8 +165,8 @@ def main(argv: list[str]) -> int:
     engine = get_engine()
     wait_for_db(engine)
 
-    if command == "init":
-        tables = init_schema(engine)
+    if command in ("init", "reset"):
+        tables = init_schema(engine) if command == "init" else reset_schema(engine)
         print(f"Schema ready: {len(tables)} tables -> {', '.join(tables)}")
     elif command == "check":
         with engine.connect() as conn:

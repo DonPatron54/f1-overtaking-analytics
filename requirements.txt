@@ -94,6 +94,8 @@ idna==3.20
     #   jsonschema
     #   requests
     #   url-normalize
+iniconfig==2.3.1
+    # via pytest
 interface-meta==2.0.1
     # via formulaic
 ipykernel==7.4.0
@@ -276,6 +278,7 @@ packaging==26.3
     #   patsy
     #   plotly
     #   pyogrio
+    #   pytest
     #   shap
     #   statsmodels
 pandas==2.3.3
@@ -304,6 +307,8 @@ platformdirs==4.13.5
     #   requests-cache
 plotly==7.1.0
     # via -r requirements.in
+pluggy==1.7.0
+    # via pytest
 prometheus-client==0.26.0
     # via jupyter-server
 prompt-toolkit==3.0.53
@@ -336,6 +341,7 @@ pygments==2.21.0
     #   ipython-pygments-lexers
     #   jupyter-console
     #   nbconvert
+    #   pytest
 pyjwt==2.15.1
     # via fastf1
 pyogrio==0.13.0
@@ -344,6 +350,8 @@ pyparsing==3.3.3
     # via matplotlib
 pyproj==3.7.2
     # via geopandas
+pytest==9.2.0
+    # via -r requirements.in
 python-dateutil==3.0.0
     # via
     #   arrow

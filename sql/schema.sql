@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS pairs (
     gap_s          NUMERIC(6, 3),
     tyre_age_diff  INT,
     compound_adv   INT,
+    wet_tyres      BOOLEAN,
     pace_diff      NUMERIC(6, 3),
     quali_gap      INT,
     lap_frac       NUMERIC(5, 4),

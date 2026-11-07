@@ -38,3 +38,6 @@ folium
 # Notebooks
 jupyter
 ipykernel
+
+# Testing
+pytest
