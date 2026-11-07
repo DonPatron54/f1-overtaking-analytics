@@ -39,6 +39,9 @@ jobs:
           F1_PASSWORD: ${{ secrets.F1_PASSWORD }}
           SEASONS: ${{ inputs.seasons }}
         run: |
+          if [ -z "$F1_USERNAME" ] || [ -z "$F1_PASSWORD" ]; then
+            echo "::error::Repository secrets F1_USERNAME and F1_PASSWORD are required"; exit 1
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           for season in $SEASONS; do

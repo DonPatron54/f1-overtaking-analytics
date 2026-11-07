@@ -61,10 +61,9 @@ def _paths(season: int, rnd: int) -> dict[str, Path]:
 def setup_fastf1(log_level: str = "WARNING", login: bool = False) -> None:
     """Enable the FastF1 HTTP cache and reduce its log output.
 
-    Since FastF1 3.9, requests to the live-timing API try to sign in to a
-    Formula 1 account. Historical race data is still served without one, so
-    the sign-in is skipped: without F1_USERNAME/F1_PASSWORD, stdin is detached
-    so FastF1 never waits for an interactive credential prompt.
+    With an account (F1_USERNAME/F1_PASSWORD or login=True) the sign-in is
+    checked once up front. Without one, stdin is detached so FastF1 never waits
+    for an interactive credential prompt, and requests go to the public mirror.
     """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     fastf1.Cache.configure(cache_dir=str(CACHE_DIR))
@@ -80,7 +79,26 @@ def setup_fastf1(log_level: str = "WARNING", login: bool = False) -> None:
         # skips the request that is certain to fail - the mirror receives
         # exactly the same requests as before.
         ff1_api.base_url = ff1_api.base_url_mirror
+    else:
+        _check_account_login()
     _install_call_counter()
+
+
+def _check_account_login() -> None:
+    """Sign in once before collecting; abort on failure.
+
+    Without this check FastF1 would retry the sign-in on every request and
+    continue without authentication, i.e. many failed sign-ins in a row,
+    which can lock the account.
+    """
+    from fastf1.exceptions import F1AuthError
+    from fastf1.internals import f1account
+
+    try:
+        token = f1account.get_token()
+    except F1AuthError as exc:
+        raise SystemExit(f"F1 account sign-in failed, nothing collected: {exc}") from None
+    print(f"F1 account sign-in ok (token valid: {token.is_valid()})", flush=True)
 
 
 _NETWORK_URLS: list[str] = []
