@@ -10,8 +10,16 @@ API etiquette: FastF1 limits itself to 500 calls per hour on any API and
 (at most MAX_RACES_PER_HOUR uncached races per rolling hour, tracked in a
 file so that restarts do not reset the count) and never bypasses them.
 
+Access: since October 2026 the official live-timing server requires an
+F1 TV account (Access plan or higher). Without an account FastF1 uses its
+public mirror, which only holds some seasons (2021 and 2022 at the time of
+writing). With an account, set F1_USERNAME and F1_PASSWORD as environment
+variables (e.g. as Codespaces secrets) or pass --login to sign in
+interactively; credentials are handled by FastF1 only.
+
 Command line:
     python -m src.collect_fastf1 2021 2022
+    python -m src.collect_fastf1 --login 2018 2019 2020
 """
 
 from __future__ import annotations
@@ -50,7 +58,7 @@ def _paths(season: int, rnd: int) -> dict[str, Path]:
     return paths
 
 
-def setup_fastf1(log_level: str = "WARNING") -> None:
+def setup_fastf1(log_level: str = "WARNING", login: bool = False) -> None:
     """Enable the FastF1 HTTP cache and reduce its log output.
 
     Since FastF1 3.9, requests to the live-timing API try to sign in to a
@@ -61,7 +69,7 @@ def setup_fastf1(log_level: str = "WARNING") -> None:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     fastf1.Cache.configure(cache_dir=str(CACHE_DIR))
     fastf1.set_log_level(log_level)
-    if not os.environ.get("F1_USERNAME"):
+    if not (login or os.environ.get("F1_USERNAME")):
         sys.stdin = open(os.devnull, encoding="utf-8")  # noqa: SIM115
         # one warning per request would flood the output
         logging.getLogger("fastf1.fastf1.internals.f1account.transport").setLevel(
@@ -75,13 +83,17 @@ def setup_fastf1(log_level: str = "WARNING") -> None:
     _install_call_counter()
 
 
-_NETWORK_CALLS = {"n": 0}
+_NETWORK_URLS: list[str] = []
 
 
 def _count_network_call(response, *args, **kwargs):
-    """requests hook: count responses that were not served from the cache."""
+    """requests hook: record URLs that were not served from the cache.
+
+    The cached session can run response hooks more than once per request,
+    so calls are counted as distinct URLs per race (see collect_race).
+    """
     if not getattr(response, "from_cache", False):
-        _NETWORK_CALLS["n"] += 1
+        _NETWORK_URLS.append(response.url)
 
 
 def _install_call_counter() -> None:
@@ -154,7 +166,7 @@ def collect_race(season: int, rnd: int, refresh: bool = False) -> dict:
         record.update(json.loads(paths["meta"].read_text(encoding="utf-8")))
         return record
 
-    calls_before = _NETWORK_CALLS["n"]
+    calls_before = len(_NETWORK_URLS)
     try:
         session = fastf1.get_session(season, rnd, "R")
         session.load(laps=True, telemetry=False, weather=True, messages=False)
@@ -184,11 +196,12 @@ def collect_race(season: int, rnd: int, refresh: bool = False) -> dict:
         "session_start_utc": str(session.date),
     }
     paths["meta"].write_text(json.dumps(meta), encoding="utf-8")
-    record.update(meta, status="loaded", api_calls=_NETWORK_CALLS["n"] - calls_before)
+    record.update(meta, status="loaded",
+                  api_calls=len(set(_NETWORK_URLS[calls_before:])))
     return record
 
 
-def collect(seasons, refresh: bool = False) -> pd.DataFrame:
+def collect(seasons, refresh: bool = False, login: bool = False) -> pd.DataFrame:
     """Collect all main races of the given seasons.
 
     Races that have not taken place yet are skipped. Failures are logged and
@@ -198,11 +211,12 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
     Args:
         seasons: Iterable of championship years.
         refresh: Reload races that already exist locally.
+        login: Sign in to an F1 TV account interactively (see module docstring).
 
     Returns:
         Collection log, one row per race (also stored in reports/logs/).
     """
-    setup_fastf1()
+    setup_fastf1(login=login)
     records = []
     for season in seasons:
         schedule = load_schedule(season, refresh)
@@ -236,6 +250,8 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    years = [int(a) for a in sys.argv[1:]] or list(PILOT_SEASONS)
-    result = collect(years)
+    args = sys.argv[1:]
+    use_login = "--login" in args
+    years = [int(a) for a in args if a != "--login"] or list(PILOT_SEASONS)
+    result = collect(years, login=use_login)
     print(result["status"].value_counts().to_string())

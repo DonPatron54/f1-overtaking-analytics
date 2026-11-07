@@ -27,10 +27,9 @@ GEO_MAX_DISTANCE_KM = 5.0
 WIKI_NAME_THRESHOLD = 85        # accept a fuzzy name match from this score
 WIKI_NAME_LOCATION_THRESHOLD = 50  # lower bar if the town also matches exactly
 # Manual corrections where names and towns differ too much for fuzzy matching
-# (Jolpica circuitId -> Wikipedia circuit name)
-MANUAL_WIKI_MATCH = {
-    "hungaroring": "Hungaroring",  # Jolpica town Budapest, Wikipedia town Mogyoród
-}
+# (Jolpica circuitId -> Wikipedia circuit name). Empty while every circuit is
+# matched automatically; unmatched circuits are listed in the integration log.
+MANUAL_WIKI_MATCH: dict[str, str] = {}
 
 
 @dataclass

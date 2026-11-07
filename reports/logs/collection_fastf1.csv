@@ -1,0 +1,45 @@
+season,round,status,n_laps,n_results,n_weather,n_track_status,total_laps,session_start_utc,event_name,event_format
+2021,1,cached,1027,20,133,13,56,2021-03-28 15:00:00,Bahrain Grand Prix,conventional
+2021,2,cached,1127,20,161,22,63,2021-04-18 13:00:00,Emilia Romagna Grand Prix,conventional
+2021,3,cached,1245,20,134,3,66,2021-05-02 14:00:00,Portuguese Grand Prix,conventional
+2021,4,cached,1247,20,130,4,66,2021-05-09 13:00:00,Spanish Grand Prix,conventional
+2021,5,cached,1419,20,135,1,78,2021-05-23 13:00:00,Monaco Grand Prix,conventional
+2021,6,cached,943,20,172,30,51,2021-06-06 12:00:00,Azerbaijan Grand Prix,conventional
+2021,7,cached,1051,20,125,1,53,2021-06-20 13:00:00,French Grand Prix,conventional
+2021,8,cached,1296,20,118,3,71,2021-06-27 13:00:00,Styrian Grand Prix,conventional
+2021,9,cached,1338,20,156,5,71,2021-07-04 13:00:00,Austrian Grand Prix,conventional
+2021,10,cached,970,20,184,13,52,2021-07-18 14:00:00,British Grand Prix,sprint
+2021,11,cached,985,20,191,8,70,2021-08-01 13:00:00,Hungarian Grand Prix,conventional
+2021,12,cached,60,20,290,6,39,2021-08-29 13:00:00,Belgian Grand Prix,conventional
+2021,13,cached,1361,20,158,3,72,2021-09-05 13:00:00,Dutch Grand Prix,conventional
+2021,14,cached,891,20,149,18,53,2021-09-12 13:00:00,Italian Grand Prix,sprint
+2021,15,cached,1025,20,158,17,53,2021-09-26 12:00:00,Russian Grand Prix,conventional
+2021,16,cached,1147,20,157,16,58,2021-10-10 12:00:00,Turkish Grand Prix,conventional
+2021,17,cached,1044,20,161,8,56,2021-10-24 19:00:00,United States Grand Prix,conventional
+2021,18,cached,1261,20,164,5,71,2021-11-07 19:00:00,Mexico City Grand Prix,conventional
+2021,19,cached,1360,20,158,9,71,2021-11-14 17:00:00,São Paulo Grand Prix,sprint
+2021,20,cached,1114,20,152,27,57,2021-11-21 14:00:00,Qatar Grand Prix,conventional
+2021,21,cached,845,20,193,25,50,2021-12-05 17:30:00,Saudi Arabian Grand Prix,conventional
+2021,22,cached,1000,20,157,9,58,2021-12-12 13:00:00,Abu Dhabi Grand Prix,conventional
+2022,1,cached,1125,20,163,7,57,2022-03-20 15:00:00,Bahrain Grand Prix,conventional
+2022,2,cached,820,20,152,18,50,2022-03-27 17:00:00,Saudi Arabian Grand Prix,conventional
+2022,3,cached,1045,20,156,17,58,2022-04-10 05:00:00,Australian Grand Prix,conventional
+2022,4,cached,1132,20,158,8,63,2022-04-24 13:00:00,Emilia Romagna Grand Prix,sprint
+2022,5,cached,1057,20,162,13,57,2022-05-08 19:30:00,Miami Grand Prix,conventional
+2022,6,cached,1230,20,164,8,66,2022-05-22 13:00:00,Spanish Grand Prix,conventional
+2022,7,cached,1179,20,245,31,77,2022-05-29 13:00:00,Monaco Grand Prix,conventional
+2022,8,cached,891,20,161,23,51,2022-06-12 11:00:00,Azerbaijan Grand Prix,conventional
+2022,9,cached,1264,20,162,13,70,2022-06-19 18:00:00,Canadian Grand Prix,conventional
+2022,10,cached,815,20,203,11,52,2022-07-03 14:00:00,British Grand Prix,conventional
+2022,11,cached,1324,20,152,9,71,2022-07-10 13:00:00,Austrian Grand Prix,sprint
+2022,12,cached,958,20,128,18,53,2022-07-24 13:00:00,French Grand Prix,conventional
+2022,13,cached,1383,20,167,19,70,2022-07-31 13:00:00,Hungarian Grand Prix,conventional
+2022,14,cached,792,20,156,10,44,2022-08-28 13:00:00,Belgian Grand Prix,conventional
+2022,15,cached,1392,20,163,14,72,2022-09-04 13:00:00,Dutch Grand Prix,conventional
+2022,16,cached,971,20,147,11,53,2022-09-11 13:00:00,Italian Grand Prix,conventional
+2022,17,cached,945,20,255,31,61,2022-10-02 12:00:00,Singapore Grand Prix,conventional
+2022,18,cached,507,20,255,7,53,2022-10-09 05:00:00,Japanese Grand Prix,conventional
+2022,19,cached,992,20,170,17,56,2022-10-23 19:00:00,United States Grand Prix,conventional
+2022,20,cached,1379,20,165,6,71,2022-10-30 20:00:00,Mexico City Grand Prix,conventional
+2022,21,cached,1259,20,167,10,71,2022-11-13 18:00:00,São Paulo Grand Prix,sprint
+2022,22,cached,1117,20,155,5,58,2022-11-20 13:00:00,Abu Dhabi Grand Prix,conventional

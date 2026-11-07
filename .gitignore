@@ -6,6 +6,7 @@
 # Raw API responses ARE committed: collection takes hours (API rate limits)
 # and the sources can change (e.g. F1 live-timing access since 2026).
 data/cache/
+reports/logs/*_run.txt
 
 # Python
 __pycache__/
