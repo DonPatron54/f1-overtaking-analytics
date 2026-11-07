@@ -275,9 +275,41 @@ def collect(seasons, refresh: bool = False, login: bool = False) -> pd.DataFrame
     return log
 
 
+def check_access(seasons, login: bool = False) -> pd.DataFrame:
+    """Request one live-timing file of the first race per season (no cache).
+
+    Prints the HTTP status per season and host, to diagnose access problems
+    without collecting anything. The token is never printed.
+
+    Args:
+        seasons: Championship years to check.
+        login: Sign in interactively (see module docstring).
+
+    Returns:
+        One row per season and host with the HTTP status code.
+    """
+    setup_fastf1(login=login)
+    session_http = fastf1.req.Cache._requests_session  # uncached, token adapter mounted
+    rows = []
+    for season in seasons:
+        path = fastf1.get_session(season, 1, "R").api_path
+        for host in ("https://livetiming.formula1.com", ff1_api.base_url_mirror):
+            url = f"{host}{path}SessionInfo.jsonStream"
+            try:
+                status = session_http.get(url, timeout=30).status_code
+            except Exception as exc:  # noqa: BLE001
+                status = type(exc).__name__
+            rows.append({"season": season, "host": host, "status": status})
+            print(f"{season} {host:<38} {status}", flush=True)
+    return pd.DataFrame(rows)
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     use_login = "--login" in args
-    years = [int(a) for a in args if a != "--login"] or list(PILOT_SEASONS)
+    years = [int(a) for a in args if a.isdigit()] or list(PILOT_SEASONS)
+    if "--check" in args:
+        check_access(years, login=use_login)
+        sys.exit(0)
     result = collect(years, login=use_login)
     print(result["status"].value_counts().to_string())
