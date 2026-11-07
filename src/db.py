@@ -138,8 +138,10 @@ def load_tables(engine: Engine, tables: dict, replace: bool = True) -> dict[str,
             conn.exec_driver_sql(
                 "TRUNCATE " + ", ".join(f'"{t}"' for t in names) + " RESTART IDENTITY CASCADE")
         for t in names:
+            # PostgreSQL allows at most 65535 bind parameters per statement
+            chunk = max(1, 60000 // max(1, tables[t].shape[1]))
             tables[t].to_sql(t, conn, if_exists="append", index=False,
-                             method="multi", chunksize=5000)
+                             method="multi", chunksize=chunk)
     return {t: len(tables[t]) for t in names}
 
 

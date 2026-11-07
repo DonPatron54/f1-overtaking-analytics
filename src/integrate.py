@@ -24,6 +24,13 @@ from src.collect_geo import load_locations
 from src.config import INTERIM_DIR, LOGS_DIR, era_for_season
 
 GEO_MAX_DISTANCE_KM = 5.0
+WIKI_NAME_THRESHOLD = 85        # accept a fuzzy name match from this score
+WIKI_NAME_LOCATION_THRESHOLD = 50  # lower bar if the town also matches exactly
+# Manual corrections where names and towns differ too much for fuzzy matching
+# (Jolpica circuitId -> Wikipedia circuit name)
+MANUAL_WIKI_MATCH = {
+    "hungaroring": "Hungaroring",  # Jolpica town Budapest, Wikipedia town Mogyoród
+}
 
 
 @dataclass
@@ -114,11 +121,15 @@ def integrate_races(jol_races: pd.DataFrame, events: pd.DataFrame,
     session_date = pd.to_datetime(races["session_start_utc"], errors="coerce").dt.normalize()
     races["date_diff_days"] = (session_date - pd.to_datetime(races["race_date"])).dt.days
 
+    def _fmt(df: pd.DataFrame, name_col: str) -> str:
+        return ", ".join(f"{r.season} R{r.round} {getattr(r, name_col)}"
+                         for r in df.itertuples())
+
     note = "key (season, round)"
     if len(only_jol):
-        note += f"; only Jolpica (no FastF1 race data): {only_jol.to_dict('records')}"
+        note += f"; only Jolpica (no FastF1 race data): {_fmt(only_jol, 'race_name')}"
     if len(only_ff1):
-        note += f"; only FastF1: {only_ff1.to_dict('records')}"
+        note += f"; only FastF1: {_fmt(only_ff1, 'event_name')}"
     log.add("1 races: FastF1 sessions <-> Jolpica calendar", len(jol_races), len(races), note)
     bad = races.loc[(races["name_similarity"] < 80) | (races["date_diff_days"].abs() > 1)]
     log.add("1b races: consistency check name/date", len(races), len(races),
@@ -126,9 +137,64 @@ def integrate_races(jol_races: pd.DataFrame, events: pd.DataFrame,
             + (f": {bad[['season', 'round', 'race_name', 'event_name']].to_dict('records')}"
                if len(bad) else ""))
 
+    races["race_date"] = pd.to_datetime(races["race_date"]).dt.date
     races["race_id"] = races["season"] * 100 + races["round"]
     races["era"] = races["season"].map(era_for_season)
     return races
+
+
+def clean_wikipedia(wiki: pd.DataFrame) -> pd.DataFrame:
+    """Normalise the scraped Wikipedia circuit table.
+
+    Removes status markers (*, †) from names and converts length and number
+    of turns to numbers.
+    """
+    out = pd.DataFrame({
+        "wiki_name": wiki["Circuit"].str.replace(r"[*†‡§#]+", "", regex=True).str.strip(),
+        "wiki_location": wiki["Location"],
+        "wiki_country": wiki["Country"],
+        "circuit_type": wiki["Type"].str.replace(" circuit", "", regex=False).str.lower(),
+        "length_km": pd.to_numeric(
+            wiki["Last length used"].str.extract(r"([\d.]+)\s*km")[0], errors="coerce"),
+        "turns": pd.to_numeric(wiki["Turns"], errors="coerce").astype("Int64"),
+    })
+    return out
+
+
+def match_wikipedia(circuits: pd.DataFrame, wiki: pd.DataFrame,
+                    log: IntegrationLog) -> pd.DataFrame:
+    """Step 2b: add Wikipedia attributes by fuzzy name (+ town) matching."""
+    w = clean_wikipedia(wiki)
+    rows = []
+    for _, c in circuits.iterrows():
+        name_score = np.array([fuzz.token_set_ratio(c["circuit_name"], n)
+                               for n in w["wiki_name"]])
+        same_town = (w["wiki_location"].fillna("").str.casefold()
+                     == str(c["locality"]).casefold()).to_numpy()
+        best = int(np.argmax(name_score + 20 * same_town))
+        score, town = name_score[best], same_town[best]
+        if score >= WIKI_NAME_THRESHOLD:
+            method = "fuzzy name"
+        elif town and score >= WIKI_NAME_LOCATION_THRESHOLD:
+            method = "fuzzy name + town"
+        elif c["circuit_id"] in MANUAL_WIKI_MATCH:
+            best = int(np.flatnonzero(w["wiki_name"] == MANUAL_WIKI_MATCH[c["circuit_id"]])[0])
+            score, method = name_score[best], "manual correction"
+        else:
+            best, method = None, "unmatched"
+        rec = {"circuit_id": c["circuit_id"], "wiki_match": method,
+               "wiki_score": float(score)}
+        if best is not None:
+            rec.update(w.iloc[best].to_dict())
+        rows.append(rec)
+    m = pd.DataFrame(rows)
+    counts = m["wiki_match"].value_counts().to_dict()
+    log.add("2b circuits: Jolpica circuit name <-> Wikipedia list (fuzzy)",
+            len(circuits), int((m["wiki_match"] != "unmatched").sum()),
+            f"rapidfuzz token_set_ratio >= {WIKI_NAME_THRESHOLD}, or >= "
+            f"{WIKI_NAME_LOCATION_THRESHOLD} with identical town, else manual table; "
+            f"{counts}")
+    return circuits.merge(m, on="circuit_id", how="left")
 
 
 def integrate_circuits(races: pd.DataFrame, log: IntegrationLog) -> pd.DataFrame:
@@ -260,12 +326,14 @@ def integrate_weather(ff1_weather: pd.DataFrame, races: pd.DataFrame,
     return out
 
 
-def integrate(seasons, jolpica: dict[str, pd.DataFrame]) -> tuple[dict, pd.DataFrame]:
+def integrate(seasons, jolpica: dict[str, pd.DataFrame],
+              wiki: pd.DataFrame | None = None) -> tuple[dict, pd.DataFrame]:
     """Run all integration steps.
 
     Args:
         seasons: Championship years to integrate.
         jolpica: Output of collect_jolpica.collect (races, results, qualifying).
+        wiki: Output of scrape_wikipedia.parse (optional).
 
     Returns:
         (tables, log): dict of DataFrames ready for the database, integration log.
@@ -281,6 +349,10 @@ def integrate(seasons, jolpica: dict[str, pd.DataFrame]) -> tuple[dict, pd.DataF
     races["total_laps"] = races["total_laps"].fillna(races["max_lap"]).astype(int)
 
     circuits = integrate_circuits(races, log)
+    if wiki is not None:
+        circuits = match_wikipedia(circuits, wiki, log)
+    else:
+        circuits[["circuit_type", "length_km", "turns"]] = None
     key, driver_map, drivers = integrate_drivers(ff1["results"], jol["results"], races, log)
     results = integrate_results(jol["results"], jol["qualifying"], races, log)
     laps = integrate_laps(ff1["laps"], key, races, log)
@@ -288,7 +360,8 @@ def integrate(seasons, jolpica: dict[str, pd.DataFrame]) -> tuple[dict, pd.DataF
 
     tables = {
         "circuits": circuits[["circuit_id", "circuit_name", "locality", "country", "lat",
-                              "lon", "geojson_id"]].rename(columns={"circuit_name": "name"}),
+                              "lon", "circuit_type", "length_km", "turns", "geojson_id"]]
+        .rename(columns={"circuit_name": "name"}),
         "races": races[["race_id", "season", "round", "race_name", "circuit_id",
                         "race_date", "era", "total_laps"]],
         "drivers": drivers,

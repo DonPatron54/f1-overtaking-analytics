@@ -15,15 +15,21 @@ import json
 import logging
 import os
 import sys
+import time
 from pathlib import Path
 
 import fastf1
 import pandas as pd
+from fastf1.exceptions import RateLimitExceededError
 
 from src.config import CACHE_DIR, LOGS_DIR, PILOT_SEASONS, RAW_DIR
 
 RAW_FASTF1 = RAW_DIR / "fastf1"
 TABLES = ("laps", "results", "weather", "track_status")
+# FastF1 limits itself to 500 API calls per hour (about 25 races without cache).
+# When the limit is reached, wait and retry instead of failing the race.
+RATE_LIMIT_WAIT_S = 300
+RATE_LIMIT_MAX_WAITS = 15
 
 
 def _paths(season: int, rnd: int) -> dict[str, Path]:
@@ -97,6 +103,8 @@ def collect_race(season: int, rnd: int, refresh: bool = False) -> dict:
             "weather": pd.DataFrame(session.weather_data),
             "track_status": pd.DataFrame(session.track_status),
         }
+    except RateLimitExceededError:
+        raise  # handled by collect(): wait and retry
     except Exception as exc:  # noqa: BLE001 - log every failure and continue
         record.update(status="failed", error=f"{type(exc).__name__}: {exc}")
         return record
@@ -123,7 +131,8 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
     """Collect all main races of the given seasons.
 
     Races that have not taken place yet are skipped. Failures are logged and
-    do not stop the run.
+    do not stop the run. When FastF1's API rate limit is reached, the run
+    pauses and retries, so a full collection can take several hours.
 
     Args:
         seasons: Iterable of championship years.
@@ -141,11 +150,22 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
             if pd.Timestamp(ev["EventDate"]) > pd.Timestamp.now():
                 records.append({"season": season, "round": rnd, "status": "future"})
                 continue
-            rec = collect_race(season, rnd, refresh)
+            for attempt in range(RATE_LIMIT_MAX_WAITS + 1):
+                try:
+                    rec = collect_race(season, rnd, refresh)
+                    break
+                except RateLimitExceededError as exc:
+                    if attempt == RATE_LIMIT_MAX_WAITS:
+                        rec = {"season": season, "round": rnd, "status": "failed",
+                               "error": f"RateLimitExceededError: {exc}"}
+                        break
+                    print(f"API rate limit reached ({exc}); waiting "
+                          f"{RATE_LIMIT_WAIT_S // 60} min before retrying ...", flush=True)
+                    time.sleep(RATE_LIMIT_WAIT_S)
             rec["event_name"] = ev["EventName"]
             rec["event_format"] = ev["EventFormat"]
             records.append(rec)
-            print(f"{season} R{rnd:02d} {ev['EventName']:<28} {rec['status']}")
+            print(f"{season} R{rnd:02d} {ev['EventName']:<28} {rec['status']}", flush=True)
     log = pd.DataFrame(records)
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     log.to_csv(LOGS_DIR / "collection_fastf1.csv", index=False)
@@ -153,7 +173,6 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
     years = [int(a) for a in sys.argv[1:]] or list(PILOT_SEASONS)
     result = collect(years)
     print(result["status"].value_counts().to_string())
