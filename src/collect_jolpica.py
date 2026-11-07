@@ -145,15 +145,19 @@ def collect(seasons, refresh: bool = False) -> dict[str, pd.DataFrame]:
 
     Args:
         seasons: Iterable of championship years.
-        refresh: Re-download pages that already exist locally.
+        refresh: Re-download pages that already exist locally (the current
+            season is always downloaded again).
 
     Returns:
         Dict with the concatenated DataFrames 'races', 'results', 'qualifying'.
     """
     session = PoliteSession()
     parts: dict[str, list[pd.DataFrame]] = {"races": [], "results": [], "qualifying": []}
+    current_year = pd.Timestamp.now().year
     for season in seasons:
-        for name, df in collect_season(season, session, refresh).items():
+        # the running season changes after every race: always fetch it again
+        season_refresh = refresh or season >= current_year
+        for name, df in collect_season(season, session, season_refresh).items():
             parts[name].append(df)
     out = {name: pd.concat(dfs, ignore_index=True) for name, dfs in parts.items()}
     INTERIM_DIR.mkdir(parents=True, exist_ok=True)

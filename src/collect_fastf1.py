@@ -1,9 +1,14 @@
 """Collect lap, result and weather data of all Grand Prix races via FastF1.
 
-FastF1 reads the official F1 live-timing API. Its HTTP cache (data/cache/)
-keeps the original API responses; the tables FastF1 builds from them are
-stored unchanged as Parquet in data/raw/fastf1/<season>/. Only main races
+FastF1 reads the F1 live-timing data. Its HTTP cache (data/cache/) keeps the
+original API responses; the tables FastF1 builds from them are stored
+unchanged as Parquet in data/raw/fastf1/<season>/. Only main races
 (session 'R') are collected, no sprints and no testing.
+
+API etiquette: FastF1 limits itself to 500 calls per hour on any API and
+200 per hour on Jolpica. This module stays below both limits on its own
+(at most MAX_RACES_PER_HOUR uncached races per rolling hour, tracked in a
+file so that restarts do not reset the count) and never bypasses them.
 
 Command line:
     python -m src.collect_fastf1 2021 2022
@@ -19,6 +24,8 @@ import time
 from pathlib import Path
 
 import fastf1
+import fastf1.req
+import fastf1._api as ff1_api  # private module; behaviour checked for FastF1 3.9.0
 import pandas as pd
 from fastf1.exceptions import RateLimitExceededError
 
@@ -26,8 +33,11 @@ from src.config import CACHE_DIR, LOGS_DIR, PILOT_SEASONS, RAW_DIR
 
 RAW_FASTF1 = RAW_DIR / "fastf1"
 TABLES = ("laps", "results", "weather", "track_status")
-# FastF1 limits itself to 500 API calls per hour (about 25 races without cache).
-# When the limit is reached, wait and retry instead of failing the race.
+# Pacing: an uncached race needs about 10 calls (8 live-timing files, 2 Jolpica
+# requests), so 40 races per hour stay below 500 (any API) and 200 (Jolpica).
+MAX_RACES_PER_HOUR = 40
+LOAD_LOG = CACHE_DIR / "race_loads.json"  # timestamps of uncached race loads
+# Safety net if FastF1's own limiter still triggers: wait and retry.
 RATE_LIMIT_WAIT_S = 300
 RATE_LIMIT_MAX_WAITS = 15
 
@@ -56,6 +66,53 @@ def setup_fastf1(log_level: str = "WARNING") -> None:
         # one warning per request would flood the output
         logging.getLogger("fastf1.fastf1.internals.f1account.transport").setLevel(
             logging.ERROR)
+        # Without an account the official server answers every request with
+        # HTTP 401 and FastF1 then repeats it on its public mirror; both
+        # attempts count towards the hourly limit. Asking the mirror directly
+        # skips the request that is certain to fail - the mirror receives
+        # exactly the same requests as before.
+        ff1_api.base_url = ff1_api.base_url_mirror
+    _install_call_counter()
+
+
+_NETWORK_CALLS = {"n": 0}
+
+
+def _count_network_call(response, *args, **kwargs):
+    """requests hook: count responses that were not served from the cache."""
+    if not getattr(response, "from_cache", False):
+        _NETWORK_CALLS["n"] += 1
+
+
+def _install_call_counter() -> None:
+    """Attach the counter to FastF1's HTTP session (for the collection log)."""
+    session = (fastf1.req.Cache._requests_session_cached
+               or fastf1.req.Cache._requests_session)
+    if _count_network_call not in session.hooks["response"]:
+        session.hooks["response"].append(_count_network_call)
+
+
+def _wait_for_hourly_budget() -> None:
+    """Sleep until fewer than MAX_RACES_PER_HOUR races were loaded in the last hour.
+
+    The load times are stored in LOAD_LOG, so the budget also holds across
+    interrupted and restarted runs.
+    """
+    now = time.time()
+    loads = json.loads(LOAD_LOG.read_text()) if LOAD_LOG.exists() else []
+    loads = [t for t in loads if now - t < 3600]
+    if len(loads) >= MAX_RACES_PER_HOUR:
+        wait = 3600 - (now - min(loads)) + 5
+        print(f"hourly budget of {MAX_RACES_PER_HOUR} races used; "
+              f"waiting {wait / 60:.0f} min ...", flush=True)
+        time.sleep(wait)
+        loads = [t for t in loads if time.time() - t < 3600]
+    LOAD_LOG.write_text(json.dumps(loads + [time.time()]))
+
+
+def _is_cached(season: int, rnd: int) -> bool:
+    """True if all raw files of a race exist."""
+    return all(p.exists() for p in _paths(season, rnd).values())
 
 
 def load_schedule(season: int, refresh: bool = False) -> pd.DataFrame:
@@ -97,6 +154,7 @@ def collect_race(season: int, rnd: int, refresh: bool = False) -> dict:
         record.update(json.loads(paths["meta"].read_text(encoding="utf-8")))
         return record
 
+    calls_before = _NETWORK_CALLS["n"]
     try:
         session = fastf1.get_session(season, rnd, "R")
         session.load(laps=True, telemetry=False, weather=True, messages=False)
@@ -126,7 +184,7 @@ def collect_race(season: int, rnd: int, refresh: bool = False) -> dict:
         "session_start_utc": str(session.date),
     }
     paths["meta"].write_text(json.dumps(meta), encoding="utf-8")
-    record.update(meta, status="loaded")
+    record.update(meta, status="loaded", api_calls=_NETWORK_CALLS["n"] - calls_before)
     return record
 
 
@@ -134,8 +192,8 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
     """Collect all main races of the given seasons.
 
     Races that have not taken place yet are skipped. Failures are logged and
-    do not stop the run. When FastF1's API rate limit is reached, the run
-    pauses and retries, so a full collection can take several hours.
+    do not stop the run. Uncached races are paced to MAX_RACES_PER_HOUR, so a
+    full collection (about 200 races) takes several hours.
 
     Args:
         seasons: Iterable of championship years.
@@ -153,6 +211,8 @@ def collect(seasons, refresh: bool = False) -> pd.DataFrame:
             if pd.Timestamp(ev["EventDate"]) > pd.Timestamp.now():
                 records.append({"season": season, "round": rnd, "status": "future"})
                 continue
+            if refresh or not _is_cached(season, rnd):
+                _wait_for_hourly_budget()
             for attempt in range(RATE_LIMIT_MAX_WAITS + 1):
                 try:
                     rec = collect_race(season, rnd, refresh)
