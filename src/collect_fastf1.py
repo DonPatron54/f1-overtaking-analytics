@@ -85,6 +85,7 @@ def setup_fastf1(log_level: str = "WARNING", login: bool = False) -> None:
     else:
         _check_account_login()
     _install_call_counter()
+    _install_tyre_fix_guard()
 
 
 def _check_account_login() -> None:
@@ -123,6 +124,37 @@ def _install_call_counter() -> None:
                or fastf1.req.Cache._requests_session)
     if _count_network_call not in session.hooks["response"]:
         session.hooks["response"].append(_count_network_call)
+
+
+_TYRE_FIX_SKIPPED: list[str] = []
+
+
+def _install_tyre_fix_guard() -> None:
+    """Keep FastF1 from discarding a whole race over one driver's tyre data.
+
+    FastF1 3.9.0 corrects the tyre/stint assignment per driver after loading
+    (private method Session.__fix_tyre_info). For 2018 R14 (Monza) this
+    correction raises IndexError for one driver, and FastF1 then drops the
+    lap data of the entire race. The guard keeps that driver's laps with the
+    uncorrected tyre information and records the driver number, which is
+    written to the race's meta file (tyre_fix_skipped_drivers). All other
+    races are unaffected: the original method runs unchanged.
+    """
+    session_cls = fastf1.core.Session
+    original = session_cls._Session__fix_tyre_info
+    if getattr(original, "_guarded", False):
+        return
+
+    def guarded(self, df, *args, **kwargs):
+        try:
+            return original(self, df, *args, **kwargs)
+        except IndexError:
+            drivers = df["Driver"].dropna().unique().tolist() if "Driver" in df else []
+            _TYRE_FIX_SKIPPED.extend(str(d) for d in drivers)
+            return df
+
+    guarded._guarded = True
+    session_cls._Session__fix_tyre_info = guarded
 
 
 def _wait_for_hourly_budget() -> None:
@@ -188,6 +220,7 @@ def collect_race(season: int, rnd: int, refresh: bool = False) -> dict:
         return record
 
     calls_before = len(_NETWORK_URLS)
+    _TYRE_FIX_SKIPPED.clear()
     try:
         session = fastf1.get_session(season, rnd, "R")
         session.load(laps=True, telemetry=False, weather=True, messages=False)
@@ -216,6 +249,8 @@ def collect_race(season: int, rnd: int, refresh: bool = False) -> dict:
         "total_laps": int(total_laps) if pd.notna(total_laps) else None,
         "session_start_utc": str(session.date),
     }
+    if _TYRE_FIX_SKIPPED:
+        meta["tyre_fix_skipped_drivers"] = sorted(set(_TYRE_FIX_SKIPPED))
     paths["meta"].write_text(json.dumps(meta), encoding="utf-8")
     record.update(meta, status="loaded",
                   api_calls=len(set(_NETWORK_URLS[calls_before:])))
@@ -243,7 +278,12 @@ def collect(seasons, refresh: bool = False, login: bool = False) -> pd.DataFrame
         schedule = load_schedule(season, refresh)
         for _, ev in schedule.iterrows():
             rnd = int(ev["RoundNumber"])
-            if pd.Timestamp(ev["EventDate"]) > pd.Timestamp.now():
+            # a race counts as available three hours after its start
+            race_start = pd.Timestamp(ev.get("Session5DateUtc", pd.NaT))
+            if pd.isna(race_start):
+                race_start = pd.Timestamp(ev["EventDate"]) + pd.Timedelta(days=1)
+            now_utc = pd.Timestamp.now(tz="UTC").tz_localize(None)
+            if race_start.tz_localize(None) + pd.Timedelta(hours=3) > now_utc:
                 records.append({"season": season, "round": rnd, "status": "future"})
                 continue
             if refresh or not _is_cached(season, rnd):
