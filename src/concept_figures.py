@@ -200,12 +200,13 @@ def fig_waterfall(size=(900, 600)) -> pd.DataFrame:
     return table
 
 
-def circuit_svg(geojson_id: str = "be-1925", box=(560, 680),
-                stroke: str = "#4b4f59") -> Path:
-    """Outline of one circuit from the GeoJSON layouts as a small SVG.
+def circuit_svg(geojson_id: str = "mc-1929", box=(500, 640),
+                track: str = "#f3f2ee", asphalt: str = "#2c2f37") -> Path:
+    """Track map of one circuit from the GeoJSON layouts as a small SVG.
 
     The layout keeps its true shape (equirectangular projection) and is scaled
-    to fit into ``box`` (width, height in px).
+    to fit into ``box`` (width, height in px). It is drawn as a wide dark
+    asphalt band with a light track line on top, like a broadcast track map.
     """
     layouts = json.loads((RAW_DIR / "geo" / "f1-circuits.geojson").read_text())
     feature = next(f for f in layouts["features"]
@@ -213,16 +214,19 @@ def circuit_svg(geojson_id: str = "be-1925", box=(560, 680),
     lon, lat = np.array(feature["geometry"]["coordinates"]).T
     x = (lon - lon.min()) * math.cos(math.radians(lat.mean()))
     y = lat.max() - lat
-    pad = 12
+    pad = 20
     scale = min((box[0] - 2 * pad) / x.max(), (box[1] - 2 * pad) / y.max())
     width = int(round(x.max() * scale + 2 * pad))
     height = int(round(y.max() * scale + 2 * pad))
     pts = " ".join(f"{pad + a * scale:.1f},{pad + b * scale:.1f}"
                    for a, b in zip(x, y))
+    line = ('<polygon points="{pts}" fill="none" stroke="{color}" '
+            'stroke-width="{width}" stroke-linejoin="round"/>')
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" '
            f'height="{height}" viewBox="0 0 {width} {height}">'
-           f'<polygon points="{pts}" fill="none" stroke="{stroke}" '
-           f'stroke-width="7" stroke-linejoin="round"/></svg>')
+           + line.format(pts=pts, color=asphalt, width=30)
+           + line.format(pts=pts, color=track, width=10)
+           + '</svg>')
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUT_DIR / f"circuit_{geojson_id}.svg"
     path.write_text(svg)
