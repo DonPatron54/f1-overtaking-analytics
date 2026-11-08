@@ -71,6 +71,9 @@ Run the notebooks in this order (each runs top to bottom with *Restart & Run All
 | `05_eda` | non-graphical and graphical exploratory analysis | `reports/figures/eda_*.png` |
 | `06_statistical_tests` | Chi², ANOVA / Kruskal-Wallis, correlations (p-values, effect sizes) | summary table |
 
+Figures for the slides are drawn at slide size (all labels at least 24 px) with
+`python -m src.concept_figures` and saved to `reports/figures/slides/`.
+
 Scope: all main races 2018–2026 (2026 up to the latest race; the remaining
 races are added after the season ends).
 
