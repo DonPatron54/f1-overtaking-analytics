@@ -68,6 +68,8 @@ Run the notebooks in this order (each runs top to bottom with *Restart & Run All
 | `02_integration` | keys, joins, integration log | `data/interim/`, `reports/logs/integration_log.csv` |
 | `03_database_postgres` | load PostgreSQL, SQL queries | database tables |
 | `04_pairs_and_target` | pair-laps, target `overtake`, exclusions | table `pairs`, `data/processed/pairs.parquet` |
+| `05_eda` | non-graphical and graphical exploratory analysis | `reports/figures/eda_*.png` |
+| `06_statistical_tests` | Chi², ANOVA / Kruskal-Wallis, correlations (p-values, effect sizes) | summary table |
 
 Scope: all main races 2018–2026 (2026 up to the latest race; the remaining
 races are added after the season ends).

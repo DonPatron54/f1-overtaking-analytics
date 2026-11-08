@@ -19,8 +19,9 @@ import numpy as np
 import pandas as pd
 from rapidfuzz import fuzz
 
+from src.circuit_features import MAX_TURN_DEG, geometry_features
 from src.collect_fastf1 import RAW_FASTF1
-from src.collect_geo import load_locations
+from src.collect_geo import load_layouts, load_locations
 from src.config import (
     ABSOLUTE_COMPOUNDS_2018,
     COMPOUND_RANK,
@@ -203,6 +204,23 @@ def match_wikipedia(circuits: pd.DataFrame, wiki: pd.DataFrame,
     return circuits.merge(m, on="circuit_id", how="left")
 
 
+def add_geometry(circuits: pd.DataFrame, log: IntegrationLog) -> pd.DataFrame:
+    """Step 2c: longest straight from the GeoJSON layout, validated by length."""
+    geo = geometry_features(load_layouts())
+    out = circuits.merge(geo, on="geojson_id", how="left")
+    if "length_km" in out:
+        dev = 100 * (out["layout_length_m"] / 1000 / out["length_km"].astype(float) - 1)
+        check = (f"layout length vs. Wikipedia length: max. deviation "
+                 f"{dev.abs().max():.1f} %")
+    else:
+        check = "no Wikipedia length available for validation"
+    log.add("2c circuits: geometry features from GeoJSON layout", len(circuits),
+            int(out["longest_straight_m"].notna().sum()),
+            f"projected to local UTM zone; straight = consecutive segments within "
+            f"{MAX_TURN_DEG:.0f} deg of the running direction; {check}")
+    return out
+
+
 def integrate_circuits(races: pd.DataFrame, log: IntegrationLog) -> pd.DataFrame:
     """Step 2: circuits from Jolpica, matched to GeoJSON by nearest location."""
     circuits = (races[["circuit_id", "circuit_name", "locality", "country", "lat", "lon"]]
@@ -367,9 +385,14 @@ def integrate_weather(ff1_weather: pd.DataFrame, races: pd.DataFrame,
         "pressure": w["Pressure"], "rainfall": w["Rainfall"].astype("boolean"),
         "wind_speed": w["WindSpeed"],
     }).dropna(subset=["time_s"]).drop_duplicates(["race_id", "time_s"])
+    # single samples with 0.0 degC are sensor dropouts (neighbouring samples
+    # are 25-50 degC); dropping them lets the as-of join use the last valid one
+    dropout = (out["track_temp"] <= 0) | (out["air_temp"] <= 0)
+    out = out.loc[~dropout]
     log.add("6 weather: FastF1 weather samples", len(w), len(out),
-            "rows without time or duplicate (race, time) removed; joined to pairs "
-            "later with merge_asof (backward) on lap start time")
+            f"rows without time or duplicate (race, time) removed; {int(dropout.sum())} "
+            f"sensor dropouts (temperature 0.0 degC) removed; joined to pairs later "
+            f"with merge_asof (backward) on lap start time")
     return out
 
 
@@ -400,6 +423,7 @@ def integrate(seasons, jolpica: dict[str, pd.DataFrame],
         circuits = match_wikipedia(circuits, wiki, log)
     else:
         circuits[["circuit_type", "length_km", "turns"]] = None
+    circuits = add_geometry(circuits, log)
     key, driver_map, drivers = integrate_drivers(ff1["results"], jol["results"], races, log)
     results = integrate_results(jol["results"], jol["qualifying"], races, log)
     laps = integrate_laps(ff1["laps"], key, races, log)
@@ -407,7 +431,8 @@ def integrate(seasons, jolpica: dict[str, pd.DataFrame],
 
     tables = {
         "circuits": circuits[["circuit_id", "circuit_name", "locality", "country", "lat",
-                              "lon", "circuit_type", "length_km", "turns", "geojson_id"]]
+                              "lon", "circuit_type", "length_km", "turns",
+                              "longest_straight_m", "geojson_id"]]
         .rename(columns={"circuit_name": "name"}),
         "races": races[["race_id", "season", "round", "race_name", "circuit_id",
                         "race_date", "era", "total_laps"]],
