@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS laps (
     time_end_s    NUMERIC(10, 3),                    -- session time at lap end (s)
     position      INT,
     stint         INT,
-    compound      TEXT,
+    compound      TEXT,                              -- race-relative: SOFT/MEDIUM/HARD/INTERMEDIATE/WET
+    compound_raw  TEXT,                              -- as delivered (2018: absolute names)
     tyre_life     INT,
     pit_in        BOOLEAN,
     pit_out       BOOLEAN,

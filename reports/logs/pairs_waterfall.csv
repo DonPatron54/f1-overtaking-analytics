@@ -1,10 +1,10 @@
 rule,removed,remaining
-"candidate pair-laps (adjacent cars, laps 2..N)",0,44280
-"no lap-n data for A or B (retirement, race end or missing timing)",496,43784
-positions not consecutive at lap start (car missing in data),0,43784
-pit stop of A or B in lap n,4825,38959
-"lap n neutralised (SC, VSC, red flag)",2455,36504
-restart lap (lap n-1 neutralised),856,35648
-missing timing at lap start,0,35648
-negative gap (inconsistent timing),0,35648
-gap > 2.0 s at lap start,20533,15115
+"candidate pair-laps (adjacent cars, laps 2..N)",0,197537
+"no lap-n data for A or B (retirement, race end or missing timing)",1973,195564
+positions not consecutive at lap start (car missing in data),0,195564
+pit stop of A or B in lap n,20477,175087
+"lap n neutralised (SC, VSC, red flag)",10169,164918
+restart lap (lap n-1 neutralised),3540,161378
+missing timing at lap start,0,161378
+negative gap (inconsistent timing),0,161378
+gap > 2.0 s at lap start,91182,70196

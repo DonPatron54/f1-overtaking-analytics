@@ -31,6 +31,10 @@ NEUTRALISED_STATUS = ("4", "5", "6", "7")
 # Tyre compound ranking for compound_adv (higher = softer = faster)
 COMPOUND_RANK = {"SOFT": 3, "MEDIUM": 2, "HARD": 1}
 WET_COMPOUNDS = ("INTERMEDIATE", "WET")
+# Until 2018 Pirelli used absolute compound names; three of them were
+# nominated per race. Ordered from softest to hardest.
+ABSOLUTE_COMPOUNDS_2018 = ("HYPERSOFT", "ULTRASOFT", "SUPERSOFT", "SOFT",
+                           "MEDIUM", "HARD", "SUPERHARD")
 
 # Web access
 USER_AGENT = "f1-overtaking-analytics/0.1 (student research project; python-requests)"

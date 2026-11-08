@@ -1,10 +1,11 @@
 step,rows_before,rows_after,change,note
-1 races: FastF1 sessions <-> Jolpica calendar,44,44,0,"key (season, round)"
-1b races: consistency check name/date,44,44,0,0 races with name similarity < 80 or date difference > 1 day
-2 circuits: Jolpica circuitId <-> GeoJSON location (nearest point),26,26,0,matched if distance <= 5.0 km; unmatched: []; max matched distance 1.03 km
-2b circuits: Jolpica circuit name <-> Wikipedia list (fuzzy),26,26,0,"rapidfuzz token_set_ratio >= 85, or >= 50 with identical town, else manual table; {'fuzzy name': 24, 'fuzzy name + town': 2}"
-3 drivers: FastF1 car number per race <-> Jolpica driverId,880,880,0,"key (season, round, number); unmatched 0; driverId differs from FastF1 DriverId: 0; abbreviation differs from Jolpica code: 0"
-"3b driver_map: unique (season, abbreviation)",43,43,0,no conflicts
-4 results: race result + qualifying position,880,880,0,"left join on (season, round, driverId); 1 drivers without qualifying position (quali_gap will be missing for them)"
-"5 laps: FastF1 laps -> driver_id, seconds",47333,47333,0,"driver not mapped: 0; lap number missing: 0; duplicate (race, driver, lap): 0; info: position missing 66, IsAccurate=False 6888"
-6 weather: FastF1 weather samples,7342,7342,0,"rows without time or duplicate (race, time) removed; joined to pairs later with merge_asof (backward) on lap start time"
+1 races: FastF1 sessions <-> Jolpica calendar,196,192,-4,"key (season, round); only Jolpica (no FastF1 race data): 2026 R20 Brazilian Grand Prix, 2026 R21 Las Vegas Grand Prix, 2026 R22 Qatar Grand Prix, 2026 R23 Abu Dhabi Grand Prix"
+1b races: consistency check name/date,192,192,0,0 races with name similarity < 80 or date difference > 1 day
+2 circuits: Jolpica circuitId <-> GeoJSON location (nearest point),33,33,0,matched if distance <= 5.0 km; unmatched: []; max matched distance 1.03 km
+2b circuits: Jolpica circuit name <-> Wikipedia list (fuzzy),33,33,0,"rapidfuzz token_set_ratio >= 85, or >= 50 with identical town, else manual table; {'fuzzy name': 31, 'fuzzy name + town': 2}"
+3 drivers: FastF1 car number per race <-> Jolpica driverId,3876,3876,0,"key (season, round, number); unmatched 0; driverId differs from FastF1 DriverId: 0; abbreviation differs from Jolpica code: 0"
+"3b driver_map: unique (season, abbreviation)",198,197,-1,"abbreviations with several numbers/drivers in a season (first kept): [{'season': 2024, 'abbreviation': 'BEA', 'driver_number': 38, 'driver_id': 'bearman'}, {'season': 2024, 'abbreviation': 'BEA', 'driver_number': 50, 'driver_id': 'bearman'}]"
+4 results: race result + qualifying position,3876,3876,0,"left join on (season, round, driverId); 9 drivers without qualifying position (quali_gap will be missing for them)"
+5a laps: tyre compounds -> race-relative SOFT/MEDIUM/HARD,211297,211297,0,20 races with absolute 2018 names converted (softest used dry compound = SOFT); races without exactly 3 dry compounds: none; laps without known compound: 1288
+"5 laps: FastF1 laps -> driver_id, seconds",211297,211297,0,"driver not mapped: 0; lap number missing: 0; duplicate (race, driver, lap): 0; info: position missing 319, IsAccurate=False 30299"
+6 weather: FastF1 weather samples,28930,28930,0,"rows without time or duplicate (race, time) removed; joined to pairs later with merge_asof (backward) on lap start time"

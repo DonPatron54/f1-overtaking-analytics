@@ -69,17 +69,32 @@ Run the notebooks in this order (each runs top to bottom with *Restart & Run All
 | `03_database_postgres` | load PostgreSQL, SQL queries | database tables |
 | `04_pairs_and_target` | pair-laps, target `overtake`, exclusions | table `pairs`, `data/processed/pairs.parquet` |
 
+Scope: all main races 2018–2026 (2026 up to the latest race; the remaining
+races are added after the season ends).
+
 Raw data is committed in `data/raw/`, so the notebooks run without calling the
-APIs again. A fresh collection is slow on purpose: FastF1 limits itself to
-500 API calls per hour, and the collector waits whenever the limit is reached.
+APIs again. This matters because data access has become restricted:
+
+- Since October 2026 the F1 live-timing server requires an **F1 TV account**
+  (Access plan or higher). FastF1's public mirror only holds 2021 and 2022.
+- The server blocks cloud networks (HTTP 403 from GitHub Actions and
+  Codespaces, even with an account), so a collection with account has to run
+  on a regular home or university network.
+- FastF1 allows 500 API calls per hour (Jolpica: 200). The collector paces
+  itself to at most 40 uncached races per rolling hour, also across restarts,
+  so a full collection takes about four to five hours.
 
 ```bash
-python -m src.collect_jolpica 2021 2022
-python -m src.collect_fastf1 2021 2022
+python -m src.collect_jolpica 2018 2019 2020 2021 2022 2023 2024 2025 2026
+python -m src.collect_fastf1 --check 2018 2023         # access status per season
+python -m src.collect_fastf1 --login 2018 2019 2020 2023 2024 2025 2026
 python -m src.scrape_wikipedia
 python -m src.collect_geo
-python -m pytest            # unit tests of the pair construction
+python -m pytest                                        # unit tests
 ```
+
+With `--login`, FastF1 asks for the F1 TV e-mail and password in the terminal;
+they are not stored in the project.
 
 ## Repository structure
 

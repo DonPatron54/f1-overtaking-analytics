@@ -34,3 +34,20 @@ def test_integration_log_change():
     log.add("step", 10, 7, "reason")
     row = log.to_frame().iloc[0]
     assert row["change"] == -3 and row["note"] == "reason"
+
+
+def test_relative_compounds_2018_and_later():
+    from src.integrate import relative_compounds
+
+    laps = pd.DataFrame({
+        "season": [2018] * 5 + [2019] * 3,
+        "round": [3] * 5 + [1] * 3,
+        "Compound": ["ULTRASOFT", "SOFT", "MEDIUM", "INTERMEDIATE", None,
+                     "MEDIUM", "HARD", "UNKNOWN"],
+    })
+    out = relative_compounds(laps, IntegrationLog()).tolist()
+    # 2018: ultrasoft/soft/medium nominated -> SOFT/MEDIUM/HARD; wet unchanged
+    assert out[:4] == ["SOFT", "MEDIUM", "HARD", "INTERMEDIATE"]
+    assert pd.isna(out[4])
+    # 2019+: relative names stay, unknown becomes missing
+    assert out[5:7] == ["MEDIUM", "HARD"] and pd.isna(out[7])

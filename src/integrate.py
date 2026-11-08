@@ -21,7 +21,14 @@ from rapidfuzz import fuzz
 
 from src.collect_fastf1 import RAW_FASTF1
 from src.collect_geo import load_locations
-from src.config import INTERIM_DIR, LOGS_DIR, era_for_season
+from src.config import (
+    ABSOLUTE_COMPOUNDS_2018,
+    COMPOUND_RANK,
+    INTERIM_DIR,
+    LOGS_DIR,
+    WET_COMPOUNDS,
+    era_for_season,
+)
 
 GEO_MAX_DISTANCE_KM = 5.0
 WIKI_NAME_THRESHOLD = 85        # accept a fuzzy name match from this score
@@ -274,6 +281,45 @@ def integrate_results(jol_results: pd.DataFrame, jol_quali: pd.DataFrame,
     return out[["race_id", "driver_id", "team", "grid", "quali_pos", "finish_pos", "status"]]
 
 
+def relative_compounds(laps: pd.DataFrame, log: IntegrationLog) -> pd.Series:
+    """Express all tyre compounds on the race-relative scale SOFT/MEDIUM/HARD.
+
+    Since 2019 the timing data already uses the relative names. In 2018 the
+    absolute names (HYPERSOFT ... SUPERHARD) were used, with three of them
+    nominated per race. They are mapped per race by order: softest used dry
+    compound -> SOFT, middle -> MEDIUM, hardest -> HARD. Wet tyres keep their
+    names; anything else (None, UNKNOWN, TEST) becomes missing.
+
+    Args:
+        laps: Raw FastF1 laps with season, round, Compound.
+        log: Integration log.
+
+    Returns:
+        Relative compound per lap (same index as `laps`).
+    """
+    raw = laps["Compound"].astype("string").str.upper()
+    out = raw.where(raw.isin(list(COMPOUND_RANK) + list(WET_COMPOUNDS)))
+    order = {c: i for i, c in enumerate(ABSOLUTE_COMPOUNDS_2018)}
+    absolute_only = set(ABSOLUTE_COMPOUNDS_2018) - set(COMPOUND_RANK)
+    converted, irregular = 0, []
+    for (season, rnd), idx in laps.groupby(["season", "round"]).groups.items():
+        names = raw.loc[idx]
+        if not names.isin(list(absolute_only)).any():
+            continue  # race already uses relative names
+        dry = sorted((c for c in names.dropna().unique() if c in order), key=order.get)
+        if len(dry) != 3:
+            irregular.append(f"{season} R{rnd}: {dry}")
+        relative = dict(zip(dry, ["SOFT", "MEDIUM", "HARD"][:len(dry)]))
+        out.loc[idx] = names.map(relative).where(names.isin(list(relative)), out.loc[idx])
+        converted += 1
+    log.add("5a laps: tyre compounds -> race-relative SOFT/MEDIUM/HARD", len(laps), len(laps),
+            f"{converted} races with absolute 2018 names converted (softest used dry "
+            f"compound = SOFT); races without exactly 3 dry compounds: "
+            f"{irregular if irregular else 'none'}; laps without known compound: "
+            f"{int(out.isna().sum())}")
+    return out
+
+
 def integrate_laps(ff1_laps: pd.DataFrame, key: pd.DataFrame, races: pd.DataFrame,
                    log: IntegrationLog) -> pd.DataFrame:
     """Step 5: FastF1 laps with driver_id, times in seconds."""
@@ -284,6 +330,7 @@ def integrate_laps(ff1_laps: pd.DataFrame, key: pd.DataFrame, races: pd.DataFram
     unmapped = laps["driver_id"].isna()
     no_lapnum = laps["LapNumber"].isna()
     laps = laps.loc[~unmapped & ~no_lapnum].copy()
+    compound_rel = relative_compounds(laps, log)
     out = pd.DataFrame({
         "race_id": laps["race_id"],
         "driver_id": laps["driver_id"],
@@ -292,7 +339,8 @@ def integrate_laps(ff1_laps: pd.DataFrame, key: pd.DataFrame, races: pd.DataFram
         "time_end_s": _seconds(laps["Time"]),
         "position": laps["Position"],
         "stint": laps["Stint"],
-        "compound": laps["Compound"],
+        "compound": compound_rel,
+        "compound_raw": laps["Compound"],
         "tyre_life": laps["TyreLife"],
         "pit_in": laps["PitInTime"].notna(),
         "pit_out": laps["PitOutTime"].notna(),

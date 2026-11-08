@@ -310,8 +310,15 @@ def collect(seasons, refresh: bool = False, login: bool = False) -> pd.DataFrame
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     log_file = LOGS_DIR / "collection_fastf1.csv"
     if log_file.exists():
-        # keep the entries of seasons that were not part of this run
         old = pd.read_csv(log_file)
+        # a race that is only read from disk now keeps the record of the run
+        # that actually downloaded it (status, API calls, notes)
+        key = ["season", "round"]
+        earlier = old.loc[old["status"] == "loaded"].set_index(key)
+        log = log.set_index(key)
+        reuse = log.index[(log["status"] == "cached") & log.index.isin(earlier.index)]
+        log = pd.concat([log.drop(index=reuse), earlier.loc[reuse]]).reset_index()
+        # keep the entries of seasons that were not part of this run
         old = old.loc[~old["season"].isin(log["season"].unique())]
         full = pd.concat([old, log], ignore_index=True)
     else:
