@@ -136,7 +136,7 @@ def _install_tyre_fix_guard() -> None:
     (private method Session.__fix_tyre_info). For 2018 R14 (Monza) this
     correction raises IndexError for one driver, and FastF1 then drops the
     lap data of the entire race. The guard keeps that driver's laps with the
-    uncorrected tyre information and records the driver number, which is
+    uncorrected tyre information and records the driver, which is
     written to the race's meta file (tyre_fix_skipped_drivers). All other
     races are unaffected: the original method runs unchanged.
     """
@@ -146,8 +146,10 @@ def _install_tyre_fix_guard() -> None:
         return
 
     def guarded(self, df, *args, **kwargs):
+        # the original edits its input in place before it can fail, so it
+        # works on a copy; on failure the untouched input is returned
         try:
-            return original(self, df, *args, **kwargs)
+            return original(self, df.copy(), *args, **kwargs)
         except IndexError:
             drivers = df["Driver"].dropna().unique().tolist() if "Driver" in df else []
             _TYRE_FIX_SKIPPED.extend(str(d) for d in drivers)
